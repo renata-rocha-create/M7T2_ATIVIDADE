@@ -18,14 +18,14 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-C_BLUE_DARK  = "00427A"
-C_BLUE_MED   = "185FA5"
-C_BLUE_LIGHT = "D6E8F7"
-C_TEAL       = "0F6E56"
-C_TEAL_LIGHT = "D4EDE6"
+C_BLUE_DARK  = "1B3A6B"
+C_BLUE_MED   = "2E5FA3"
+C_BLUE_LIGHT = "EBF3FB"
+C_TEAL       = "00A86B"
+C_TEAL_LIGHT = "E8F7F1"
 C_GRAY_HEAD  = "F1F0EB"
 C_WHITE      = "FFFFFF"
-C_YELLOW     = "FFF3CD"
+C_YELLOW     = "EBF3FB"
 
 
 def _fill(hex_color):
@@ -374,3 +374,4 @@ def gerar_excel_bytes(rows: list[dict], estado: str, regime: str) -> bytes:
     wb.save(buf)
     buf.seek(0)
     return buf.read()
+
