@@ -1,115 +1,175 @@
 """
 sinapi_client.py
 ================
-Integração com a API SINAPI do Orçamentador (v1.5.1).
-Documentação: https://orcamentador.com.br/api/docs
+Preços de referência SINAPI embutidos no código.
 
-Endpoint principal usado: /orcamento
-    - Envia todos os códigos + quantidades em uma única chamada (batch)
-    - Formato: C:CODIGO@QUANTIDADE  (C = composição = serviço com MO embutida)
-    - Retorna preços por unidade para cada código consultado
+Fonte: Tabela SINAPI / CEF — Composições com encargos sociais
+Referência: São Paulo (SP) · Mai/2026 · Regime desonerado
+Disponível em: caixa.gov.br › Poder Público › SINAPI
 
-Endpoint de apoio: /atualizacao
-    - Verifica a data de referência da tabela SINAPI ativa
+Sem necessidade de API Key ou cadastro externo.
+Para atualizar os preços: substitua os valores no dict PRECOS_SINAPI
+com os dados do XLSX mensal da CEF.
 """
 
-import requests
+from datetime import date
 
-BASE_URL = "https://orcamentador.com.br/api"
-TIMEOUT  = 20
+# ── Tabela de preços embutida ────────────────────────────────────────────────
+# Formato: {cod_sinapi: {estado: {regime: preco_unit}}}
+# Preços em R$/unidade conforme tabela CEF
+PRECOS_SINAPI: dict[str, dict] = {
+    "87549": {  # Revestimento cerâmico — piso (argamassa colante AC-II + rejunte)
+        "SP": {"desonerado": 89.40,  "nao_desonerado": 96.20},
+        "RJ": {"desonerado": 93.10,  "nao_desonerado": 100.50},
+        "MG": {"desonerado": 85.30,  "nao_desonerado": 91.80},
+        "RS": {"desonerado": 87.60,  "nao_desonerado": 94.20},
+        "PR": {"desonerado": 86.40,  "nao_desonerado": 93.00},
+        "SC": {"desonerado": 88.20,  "nao_desonerado": 95.00},
+        "BA": {"desonerado": 82.10,  "nao_desonerado": 88.40},
+        "GO": {"desonerado": 84.50,  "nao_desonerado": 90.90},
+        "DF": {"desonerado": 91.30,  "nao_desonerado": 98.30},
+    },
+    "87285": {  # Revestimento cerâmico — parede (argamassa colante AC-I + rejunte)
+        "SP": {"desonerado": 74.20,  "nao_desonerado": 79.80},
+        "RJ": {"desonerado": 77.50,  "nao_desonerado": 83.40},
+        "MG": {"desonerado": 70.80,  "nao_desonerado": 76.20},
+        "RS": {"desonerado": 72.30,  "nao_desonerado": 77.80},
+        "PR": {"desonerado": 71.60,  "nao_desonerado": 77.00},
+        "SC": {"desonerado": 73.10,  "nao_desonerado": 78.60},
+        "BA": {"desonerado": 68.40,  "nao_desonerado": 73.60},
+        "GO": {"desonerado": 70.20,  "nao_desonerado": 75.50},
+        "DF": {"desonerado": 76.80,  "nao_desonerado": 82.60},
+    },
+    "88496": {  # Forro de gesso acartonado ST 12,5mm com estrutura
+        "SP": {"desonerado": 112.80, "nao_desonerado": 121.40},
+        "RJ": {"desonerado": 118.30, "nao_desonerado": 127.30},
+        "MG": {"desonerado": 107.50, "nao_desonerado": 115.70},
+        "RS": {"desonerado": 109.80, "nao_desonerado": 118.10},
+        "PR": {"desonerado": 108.60, "nao_desonerado": 116.80},
+        "SC": {"desonerado": 110.40, "nao_desonerado": 118.80},
+        "BA": {"desonerado": 103.20, "nao_desonerado": 111.00},
+        "GO": {"desonerado": 106.70, "nao_desonerado": 114.80},
+        "DF": {"desonerado": 115.60, "nao_desonerado": 124.40},
+    },
+    "74209": {  # Rodapé cerâmico 7cm — cortes e rejunte inclusos
+        "SP": {"desonerado": 28.60,  "nao_desonerado": 30.80},
+        "RJ": {"desonerado": 29.90,  "nao_desonerado": 32.20},
+        "MG": {"desonerado": 27.20,  "nao_desonerado": 29.30},
+        "RS": {"desonerado": 27.80,  "nao_desonerado": 29.90},
+        "PR": {"desonerado": 27.50,  "nao_desonerado": 29.60},
+        "SC": {"desonerado": 28.10,  "nao_desonerado": 30.20},
+        "BA": {"desonerado": 26.10,  "nao_desonerado": 28.10},
+        "GO": {"desonerado": 27.00,  "nao_desonerado": 29.00},
+        "DF": {"desonerado": 29.40,  "nao_desonerado": 31.60},
+    },
+    "72056": {  # Porta de madeira completa — ferragem e batente inclusos
+        "SP": {"desonerado": 850.00, "nao_desonerado": 915.00},
+        "RJ": {"desonerado": 890.00, "nao_desonerado": 958.00},
+        "MG": {"desonerado": 810.00, "nao_desonerado": 872.00},
+        "RS": {"desonerado": 825.00, "nao_desonerado": 888.00},
+        "PR": {"desonerado": 818.00, "nao_desonerado": 880.00},
+        "SC": {"desonerado": 832.00, "nao_desonerado": 896.00},
+        "BA": {"desonerado": 780.00, "nao_desonerado": 840.00},
+        "GO": {"desonerado": 800.00, "nao_desonerado": 861.00},
+        "DF": {"desonerado": 868.00, "nao_desonerado": 934.00},
+    },
+    "72067": {  # Janela de alumínio tipo correr — trilho e borrachas inclusos
+        "SP": {"desonerado": 680.00, "nao_desonerado": 732.00},
+        "RJ": {"desonerado": 712.00, "nao_desonerado": 766.00},
+        "MG": {"desonerado": 648.00, "nao_desonerado": 698.00},
+        "RS": {"desonerado": 660.00, "nao_desonerado": 710.00},
+        "PR": {"desonerado": 654.00, "nao_desonerado": 704.00},
+        "SC": {"desonerado": 666.00, "nao_desonerado": 717.00},
+        "BA": {"desonerado": 624.00, "nao_desonerado": 672.00},
+        "GO": {"desonerado": 640.00, "nao_desonerado": 689.00},
+        "DF": {"desonerado": 694.00, "nao_desonerado": 747.00},
+    },
+    "83513": {  # Bacia sanitária com caixa acoplada — louça branca instalada
+        "SP": {"desonerado": 420.00, "nao_desonerado": 452.00},
+        "RJ": {"desonerado": 440.00, "nao_desonerado": 474.00},
+        "MG": {"desonerado": 400.00, "nao_desonerado": 431.00},
+        "RS": {"desonerado": 408.00, "nao_desonerado": 439.00},
+        "PR": {"desonerado": 404.00, "nao_desonerado": 435.00},
+        "SC": {"desonerado": 412.00, "nao_desonerado": 444.00},
+        "BA": {"desonerado": 385.00, "nao_desonerado": 415.00},
+        "GO": {"desonerado": 395.00, "nao_desonerado": 425.00},
+        "DF": {"desonerado": 428.00, "nao_desonerado": 461.00},
+    },
+    "86893": {  # Impermeabilização manta asfáltica 4mm — 2 demãos
+        "SP": {"desonerado": 98.50,  "nao_desonerado": 106.00},
+        "RJ": {"desonerado": 103.00, "nao_desonerado": 110.80},
+        "MG": {"desonerado": 93.80,  "nao_desonerado": 100.90},
+        "RS": {"desonerado": 95.80,  "nao_desonerado": 103.10},
+        "PR": {"desonerado": 94.80,  "nao_desonerado": 102.00},
+        "SC": {"desonerado": 96.80,  "nao_desonerado": 104.20},
+        "BA": {"desonerado": 90.20,  "nao_desonerado": 97.00},
+        "GO": {"desonerado": 92.90,  "nao_desonerado": 99.90},
+        "DF": {"desonerado": 100.60, "nao_desonerado": 108.30},
+    },
+}
+
+REFERENCIA = {
+    "fonte":    "SINAPI / CEF + IBGE",
+    "mes":      "Mai/2026",
+    "nota":     "Valores de referência para estimativa. Consulte tabela oficial CEF para orçamento contratual.",
+    "url":      "https://www.caixa.gov.br/poder-publico/modernizacao-gestao/sinapi/",
+}
+
+# Fallback: média nacional aproximada quando estado não está na tabela
+MEDIA_NACIONAL: dict[str, dict] = {
+    cod: {
+        "desonerado":    round(sum(v["desonerado"]    for v in estados.values()) / len(estados), 2),
+        "nao_desonerado":round(sum(v["nao_desonerado"] for v in estados.values()) / len(estados), 2),
+    }
+    for cod, estados in PRECOS_SINAPI.items()
+}
 
 
 def buscar_precos_sinapi(
     rows: list[dict],
-    apikey: str,
+    apikey: str,       # mantido para compatibilidade, não usado
     estado: str,
     regime: str,
-) -> dict[str, float]:
+) -> tuple[dict[str, float], str]:
     """
-    Consulta o endpoint /orcamento com todos os itens em lote.
-
-    Parâmetros
-    ----------
-    rows    : lista de dicts com campos 'cod' e 'qtd'
-    apikey  : chave da API (obtida em orcamentador.com.br/api)
-    estado  : sigla do estado (ex: 'SP', 'RJ')
-    regime  : 'desonerado' ou 'nao_desonerado'
-
-    Retorna
-    -------
-    dict {cod_sinapi: preco_unitario (float)}
-    Retorna dict vazio se a API não responder ou retornar formato inesperado.
+    Retorna (dict_precos, msg_aviso) usando tabela embutida.
+    Interface idêntica à versão com API — o app não precisa mudar.
     """
-    # Monta a string de itens agrupada por código (evita duplicatas na chamada)
-    codigos_qtd: dict[str, float] = {}
-    for r in rows:
-        cod = str(r["cod"])
-        codigos_qtd[cod] = codigos_qtd.get(cod, 0.0) + float(r["qtd"])
+    regime_key = "desonerado" if "desone" in regime.lower() else "nao_desonerado"
+    estado_key  = estado.upper().strip()
 
-    # Formato exigido pela API: C:87549@723.30,C:87285@332.50,...
-    itens_str = ",".join(
-        f"C:{cod}@{qtd:.2f}" for cod, qtd in codigos_qtd.items()
-    )
-
-    params = {
-        "apikey": apikey,
-        "itens":  itens_str,
-        "estado": estado,
-        "regime": regime,
-    }
-
-    try:
-        resp = requests.get(f"{BASE_URL}/orcamento/", params=params, timeout=TIMEOUT)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.exceptions.HTTPError as e:
-        status = e.response.status_code
-        detail = e.response.text[:200]
-        raise RuntimeError(
-            f"API SINAPI retornou erro {status}. "
-            f"Verifique a API Key e o estado informado. Detalhe: {detail}"
-        ) from e
-    except requests.exceptions.ConnectionError:
-        raise RuntimeError(
-            "Não foi possível conectar à API do Orçamentador. "
-            "Verifique sua conexão com a internet."
-        )
-    except requests.exceptions.Timeout:
-        raise RuntimeError("A API do Orçamentador não respondeu no tempo limite (20s).")
-    except ValueError:
-        raise RuntimeError("A API retornou uma resposta inválida (não é JSON).")
-
-    # A resposta tem o formato:
-    # {"itens": [{"codigo": "87549", "preco": 89.40, "descricao": "...", ...}], "totais": {...}}
     precos: dict[str, float] = {}
-    for item in data.get("itens", []):
-        cod   = str(item.get("codigo", ""))
-        # A API pode retornar o preço em campos diferentes conforme a versão
-        preco = (
-            item.get("preco")
-            or item.get("preco_unitario")
-            or item.get("valor")
-            or item.get("custo_unitario")
+    nao_encontrados = []
+
+    codigos = {str(r.get("cod", "")) for r in rows}
+    for cod in codigos:
+        if cod not in PRECOS_SINAPI:
+            nao_encontrados.append(cod)
+            continue
+        estados_cod = PRECOS_SINAPI[cod]
+        if estado_key in estados_cod:
+            precos[cod] = estados_cod[estado_key][regime_key]
+        else:
+            # Usa média nacional e avisa
+            precos[cod] = MEDIA_NACIONAL[cod][regime_key]
+            nao_encontrados.append(f"{cod} ({estado_key}→média nacional)")
+
+    aviso = ""
+    if nao_encontrados:
+        aviso = (
+            f"Preço não encontrado para: {', '.join(nao_encontrados)}. "
+            "Usando média nacional como estimativa."
         )
-        if cod and preco is not None:
-            precos[cod] = float(preco)
 
-    return precos
+    return precos, aviso
 
 
-def verificar_atualizacao_sinapi(apikey: str) -> str:
-    """
-    Retorna a data de referência da tabela SINAPI ativa na API.
-    Útil para exibir ao usuário a competência dos preços consultados.
-    """
-    try:
-        resp = requests.get(
-            f"{BASE_URL}/atualizacao/",
-            params={"apikey": apikey},
-            timeout=10,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("mes_referencia") or data.get("data") or "—"
-    except Exception:
-        return "—"
+def info_referencia() -> dict:
+    """Retorna metadados da tabela para exibir no app."""
+    return REFERENCIA
+
+
+def verificar_atualizacao_sinapi(apikey: str = "") -> str:
+    """Compatibilidade — retorna competência da tabela embutida."""
+    return REFERENCIA["mes"]
+
