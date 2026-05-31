@@ -3,42 +3,60 @@ extrator_ifc.py
 ===============
 Extração de quantitativos arquitetônicos de arquivo IFC usando IfcOpenShell.
 
+Estratégia de extração de área (em ordem de prioridade):
+    1. IfcElementQuantity (Pset de quantidade — mais confiável)
+    2. Propriedades nomeadas em Psets genéricos (ex: "Area", "Área", "GrossArea")
+    3. Geometria via shape — calcula a maior face plana do sólido (fallback)
+
 Entidades mapeadas:
     IfcCovering         → revestimentos (piso, parede, teto, rodapé)
     IfcDoor             → portas
     IfcWindow           → janelas
     IfcSanitaryTerminal → louças e metais
     IfcSlab (ROOF)      → impermeabilização
-    IfcSpace            → para identificar nome do ambiente/cômodo
-    IfcBuildingStorey   → para nomear pavimento
-
-Cada linha retornada é um dict compatível com o DataFrame principal do app.
+    IfcBuildingStorey   → nomeia pavimento
 """
 
 import ifcopenshell
-import ifcopenshell.util.element as ifc_util
+import ifcopenshell.util.shape as ifc_shape
 
+try:
+    import ifcopenshell.geom as ifc_geom
+    GEOM_DISPONIVEL = True
+except ImportError:
+    GEOM_DISPONIVEL = False
 
-# ── Mapeamento de código SINAPI por tipo de elemento ──────────────────────────
-# Em produção: pode ser alimentado por uma planilha externa ou pela API SINAPI.
+import numpy as np
+import pandas as pd
+
 SINAPI_MAP = {
-    "piso_ceramico":  "87549",
-    "parede_ceramico":"87285",
-    "forro_gesso":    "88496",
-    "rodape":         "74209",
-    "porta_madeira":  "72056",
-    "janela_aluminio":"72067",
-    "bacia":          "83513",
-    "cuba":           "83513",
-    "lavatorio":      "83513",
-    "chuveiro":       "83513",
-    "impermeab_manta":"86893",
-    "default":        "00000",
+    "piso_ceramico":   "87549",
+    "parede_ceramico": "87285",
+    "forro_gesso":     "88496",
+    "rodape":          "74209",
+    "porta_madeira":   "72056",
+    "janela_aluminio": "72067",
+    "bacia":           "83513",
+    "cuba":            "83513",
+    "lavatorio":       "83513",
+    "chuveiro":        "83513",
+    "impermeab_manta": "86893",
+}
+
+# Nomes de propriedade que podem conter área em Psets genéricos
+AREA_PROP_NAMES = {
+    "area", "área", "grossarea", "netarea", "gross area", "net area",
+    "areabruta", "arealiquida", "floorarea", "wallarea",
+}
+
+COMP_PROP_NAMES = {
+    "length", "comprimento", "perimeter", "perímetro",
+    "grossperimeter", "netperimeter",
 }
 
 
+# ── Helpers de pavimento ──────────────────────────────────────────────────────
 def _nome_pavimento(elemento, modelo) -> str:
-    """Retorna o nome do IfcBuildingStorey associado ao elemento."""
     try:
         for rel in modelo.by_type("IfcRelContainedInSpatialStructure"):
             if elemento in rel.RelatedElements:
@@ -50,8 +68,8 @@ def _nome_pavimento(elemento, modelo) -> str:
     return "Não identificado"
 
 
-def _area_liquida(elemento) -> float:
-    """Tenta extrair área líquida do Pset de quantidade."""
+# ── Estratégia 1: IfcElementQuantity ─────────────────────────────────────────
+def _area_de_pset_quantidade(elemento) -> float:
     try:
         for rel in elemento.IsDefinedBy:
             if rel.is_a("IfcRelDefinesByProperties"):
@@ -59,17 +77,15 @@ def _area_liquida(elemento) -> float:
                 if pset.is_a("IfcElementQuantity"):
                     for q in pset.Quantities:
                         if q.is_a("IfcQuantityArea"):
-                            if "Net" in q.Name or "net" in q.Name:
-                                return float(q.AreaValue)
-                            if "Gross" in q.Name or "gross" in q.Name:
-                                return float(q.AreaValue)
+                            val = q.AreaValue
+                            if val and float(val) > 0:
+                                return float(val)
     except Exception:
         pass
     return 0.0
 
 
-def _comprimento(elemento) -> float:
-    """Tenta extrair comprimento do Pset de quantidade."""
+def _comprimento_de_pset_quantidade(elemento) -> float:
     try:
         for rel in elemento.IsDefinedBy:
             if rel.is_a("IfcRelDefinesByProperties"):
@@ -77,14 +93,107 @@ def _comprimento(elemento) -> float:
                 if pset.is_a("IfcElementQuantity"):
                     for q in pset.Quantities:
                         if q.is_a("IfcQuantityLength"):
-                            return float(q.LengthValue)
+                            val = q.LengthValue
+                            if val and float(val) > 0:
+                                return float(val)
     except Exception:
         pass
     return 0.0
 
 
+# ── Estratégia 2: Psets genéricos com propriedades nomeadas ──────────────────
+def _area_de_psets_genericos(elemento) -> float:
+    try:
+        for rel in elemento.IsDefinedBy:
+            if rel.is_a("IfcRelDefinesByProperties"):
+                pset = rel.RelatingPropertyDefinition
+                if pset.is_a("IfcPropertySet"):
+                    for prop in pset.HasProperties:
+                        nome = (prop.Name or "").lower().replace(" ", "").replace("_", "")
+                        if nome in AREA_PROP_NAMES:
+                            val = getattr(prop, "NominalValue", None)
+                            if val and hasattr(val, "wrappedValue"):
+                                v = float(val.wrappedValue)
+                                if v > 0:
+                                    return v
+    except Exception:
+        pass
+    return 0.0
+
+
+def _comprimento_de_psets_genericos(elemento) -> float:
+    try:
+        for rel in elemento.IsDefinedBy:
+            if rel.is_a("IfcRelDefinesByProperties"):
+                pset = rel.RelatingPropertyDefinition
+                if pset.is_a("IfcPropertySet"):
+                    for prop in pset.HasProperties:
+                        nome = (prop.Name or "").lower().replace(" ", "").replace("_", "")
+                        if nome in COMP_PROP_NAMES:
+                            val = getattr(prop, "NominalValue", None)
+                            if val and hasattr(val, "wrappedValue"):
+                                v = float(val.wrappedValue)
+                                if v > 0:
+                                    return v
+    except Exception:
+        pass
+    return 0.0
+
+
+# ── Estratégia 3: Geometria (maior face plana do sólido) ─────────────────────
+def _area_de_geometria(elemento, settings) -> float:
+    """
+    Calcula a área da maior face plana do elemento via tessellação.
+    Análogo a medir o polígono mais largo de uma caixa 3D —
+    para pisos e paredes isso dá a área de revestimento com boa precisão.
+    """
+    if not GEOM_DISPONIVEL:
+        return 0.0
+    try:
+        shape = ifc_geom.create_shape(settings, elemento)
+        verts = shape.geometry.verts    # lista plana [x,y,z, x,y,z, ...]
+        faces = shape.geometry.faces    # lista plana [i,j,k, i,j,k, ...]
+
+        verts_arr = np.array(verts).reshape(-1, 3)
+        faces_arr = np.array(faces).reshape(-1, 3)
+
+        maior_area = 0.0
+        for tri in faces_arr:
+            v0, v1, v2 = verts_arr[tri[0]], verts_arr[tri[1]], verts_arr[tri[2]]
+            # Área do triângulo via produto vetorial
+            area_tri = np.linalg.norm(np.cross(v1 - v0, v2 - v0)) / 2.0
+            maior_area += area_tri
+
+        # Converte de mm² para m² (IFC usa metros por padrão, mas Revit às vezes usa mm)
+        # Heurística: se o valor for muito grande, está em mm²
+        if maior_area > 10000:
+            maior_area = maior_area / 1_000_000
+
+        return round(maior_area, 2) if maior_area > 0 else 0.0
+    except Exception:
+        return 0.0
+
+
+def _area_total(elemento, settings) -> float:
+    """Tenta as 3 estratégias em sequência, retorna a primeira > 0."""
+    area = _area_de_pset_quantidade(elemento)
+    if area > 0:
+        return area
+    area = _area_de_psets_genericos(elemento)
+    if area > 0:
+        return area
+    area = _area_de_geometria(elemento, settings)
+    return area
+
+
+def _comprimento_total(elemento) -> float:
+    comp = _comprimento_de_pset_quantidade(elemento)
+    if comp > 0:
+        return comp
+    return _comprimento_de_psets_genericos(elemento)
+
+
 def _predefined_type(elemento) -> str:
-    """Retorna o PredefinedType como string uppercase ou vazio."""
     try:
         pt = getattr(elemento, "PredefinedType", None)
         return str(pt).upper() if pt else ""
@@ -92,162 +201,154 @@ def _predefined_type(elemento) -> str:
         return ""
 
 
+# ── Extração principal ────────────────────────────────────────────────────────
 def extrair_quantitativos(caminho_ifc: str, escopo: dict) -> list[dict]:
-    """
-    Lê o arquivo IFC e retorna lista de dicts com os quantitativos
-    de arquitetura conforme o escopo selecionado.
-
-    Parâmetros
-    ----------
-    caminho_ifc : str
-        Caminho local do arquivo .ifc (já salvo em disco pelo Streamlit).
-    escopo : dict
-        Flags booleanas: revestimentos, esquadrias, loucas, rodapes,
-        forros, impermeab.
-
-    Retorna
-    -------
-    list[dict]
-        Cada dict tem: cod, item, ifc, pav, cat, un, qtd
-    """
     modelo = ifcopenshell.open(caminho_ifc)
+
+    # Configurações de geometria para o fallback por shape
+    settings = None
+    if GEOM_DISPONIVEL:
+        settings = ifc_geom.settings()
+        settings.set(settings.USE_WORLD_COORDS, True)
+
     rows = []
 
     # ── Revestimentos ──────────────────────────────────────────────────────────
-    if escopo.get("revestimentos") or escopo.get("rodapes") or escopo.get("forros"):
+    if any([escopo.get("revestimentos"), escopo.get("rodapes"), escopo.get("forros")]):
         for cov in modelo.by_type("IfcCovering"):
-            pt = _predefined_type(cov)
+            pt  = _predefined_type(cov)
             pav = _nome_pavimento(cov, modelo)
 
-            if pt in ("FLOORING",) and escopo.get("revestimentos"):
-                area = _area_liquida(cov)
+            if pt == "FLOORING" and escopo.get("revestimentos"):
+                area = _area_total(cov, settings)
                 if area > 0:
                     rows.append({
-                        "cod":  SINAPI_MAP["piso_ceramico"],
+                        "cod": SINAPI_MAP["piso_ceramico"],
                         "item": "Revestimento cerâmico — piso",
-                        "ifc":  "IfcCovering",
-                        "pav":  pav,
-                        "cat":  "Revestimentos",
-                        "un":   "m2",
-                        "qtd":  round(area, 2),
+                        "ifc": "IfcCovering", "pav": pav,
+                        "cat": "Revestimentos", "un": "m2", "qtd": round(area, 2),
                     })
 
-            elif pt in ("CLADDING",) and escopo.get("revestimentos"):
-                area = _area_liquida(cov)
+            elif pt == "CLADDING" and escopo.get("revestimentos"):
+                area = _area_total(cov, settings)
                 if area > 0:
                     rows.append({
-                        "cod":  SINAPI_MAP["parede_ceramico"],
+                        "cod": SINAPI_MAP["parede_ceramico"],
                         "item": "Revestimento cerâmico — parede",
-                        "ifc":  "IfcCovering",
-                        "pav":  pav,
-                        "cat":  "Revestimentos",
-                        "un":   "m2",
-                        "qtd":  round(area, 2),
+                        "ifc": "IfcCovering", "pav": pav,
+                        "cat": "Revestimentos", "un": "m2", "qtd": round(area, 2),
                     })
 
-            elif pt in ("CEILING",) and escopo.get("forros"):
-                area = _area_liquida(cov)
+            elif pt == "CEILING" and escopo.get("forros"):
+                area = _area_total(cov, settings)
                 if area > 0:
                     rows.append({
-                        "cod":  SINAPI_MAP["forro_gesso"],
+                        "cod": SINAPI_MAP["forro_gesso"],
                         "item": "Forro de gesso acartonado",
-                        "ifc":  "IfcCovering",
-                        "pav":  pav,
-                        "cat":  "Forros",
-                        "un":   "m2",
-                        "qtd":  round(area, 2),
+                        "ifc": "IfcCovering", "pav": pav,
+                        "cat": "Forros", "un": "m2", "qtd": round(area, 2),
                     })
 
-            elif pt in ("BASEBOARD",) and escopo.get("rodapes"):
-                comp = _comprimento(cov)
+            elif pt == "BASEBOARD" and escopo.get("rodapes"):
+                comp = _comprimento_total(cov)
                 if comp > 0:
                     rows.append({
-                        "cod":  SINAPI_MAP["rodape"],
+                        "cod": SINAPI_MAP["rodape"],
                         "item": "Rodapé cerâmico",
-                        "ifc":  "IfcCovering",
-                        "pav":  pav,
-                        "cat":  "Revestimentos",
-                        "un":   "m",
-                        "qtd":  round(comp, 2),
+                        "ifc": "IfcCovering", "pav": pav,
+                        "cat": "Revestimentos", "un": "m", "qtd": round(comp, 2),
                     })
+
+            # Sem PredefinedType — tenta inferir pelo nome do tipo
+            elif pt in ("", "NOTDEFINED", "USERDEFINED") and escopo.get("revestimentos"):
+                nome = (getattr(cov, "Name", "") or "").lower()
+                area = _area_total(cov, settings)
+                if area > 0:
+                    if any(k in nome for k in ("piso", "floor", "pavimento")):
+                        rows.append({
+                            "cod": SINAPI_MAP["piso_ceramico"],
+                            "item": "Revestimento — piso (tipo inferido)",
+                            "ifc": "IfcCovering", "pav": pav,
+                            "cat": "Revestimentos", "un": "m2", "qtd": round(area, 2),
+                        })
+                    elif any(k in nome for k in ("parede", "wall", "cladding")):
+                        rows.append({
+                            "cod": SINAPI_MAP["parede_ceramico"],
+                            "item": "Revestimento — parede (tipo inferido)",
+                            "ifc": "IfcCovering", "pav": pav,
+                            "cat": "Revestimentos", "un": "m2", "qtd": round(area, 2),
+                        })
+                    elif any(k in nome for k in ("teto", "ceiling", "forro")):
+                        rows.append({
+                            "cod": SINAPI_MAP["forro_gesso"],
+                            "item": "Forro (tipo inferido)",
+                            "ifc": "IfcCovering", "pav": pav,
+                            "cat": "Forros", "un": "m2", "qtd": round(area, 2),
+                        })
 
     # ── Esquadrias ─────────────────────────────────────────────────────────────
     if escopo.get("esquadrias"):
         for door in modelo.by_type("IfcDoor"):
             pav = _nome_pavimento(door, modelo)
             rows.append({
-                "cod":  SINAPI_MAP["porta_madeira"],
+                "cod": SINAPI_MAP["porta_madeira"],
                 "item": "Porta de madeira completa",
-                "ifc":  "IfcDoor",
-                "pav":  pav,
-                "cat":  "Esquadrias",
-                "un":   "un",
-                "qtd":  1,
+                "ifc": "IfcDoor", "pav": pav,
+                "cat": "Esquadrias", "un": "un", "qtd": 1,
             })
-
         for win in modelo.by_type("IfcWindow"):
             pav = _nome_pavimento(win, modelo)
             rows.append({
-                "cod":  SINAPI_MAP["janela_aluminio"],
+                "cod": SINAPI_MAP["janela_aluminio"],
                 "item": "Janela de alumínio — correr",
-                "ifc":  "IfcWindow",
-                "pav":  pav,
-                "cat":  "Esquadrias",
-                "un":   "un",
-                "qtd":  1,
+                "ifc": "IfcWindow", "pav": pav,
+                "cat": "Esquadrias", "un": "un", "qtd": 1,
             })
 
-    # ── Louças sanitárias ──────────────────────────────────────────────────────
+    # ── Louças ─────────────────────────────────────────────────────────────────
     if escopo.get("loucas"):
         tipo_louca = {
-            "WC":       ("Bacia sanitária c/ cx. acoplada", "bacia"),
-            "SINK":     ("Cuba de embutir (lavatório)",     "cuba"),
-            "SHOWER":   ("Chuveiro / ducha",                "chuveiro"),
-            "BATH":     ("Banheira",                        "lavatorio"),
-            "WASHBASIN":("Lavatório suspenso",              "lavatorio"),
+            "WC":        ("Bacia sanitária c/ cx. acoplada", "bacia"),
+            "SINK":      ("Cuba de embutir (lavatório)",     "cuba"),
+            "SHOWER":    ("Chuveiro / ducha",                "chuveiro"),
+            "BATH":      ("Banheira",                        "lavatorio"),
+            "WASHBASIN": ("Lavatório suspenso",              "lavatorio"),
         }
         for san in modelo.by_type("IfcSanitaryTerminal"):
-            pt = _predefined_type(san)
+            pt  = _predefined_type(san)
             pav = _nome_pavimento(san, modelo)
             item_label, cod_key = tipo_louca.get(pt, ("Louça sanitária", "bacia"))
             rows.append({
-                "cod":  SINAPI_MAP[cod_key],
+                "cod": SINAPI_MAP[cod_key],
                 "item": item_label,
-                "ifc":  "IfcSanitaryTerminal",
-                "pav":  pav,
-                "cat":  "Louças",
-                "un":   "un",
-                "qtd":  1,
+                "ifc": "IfcSanitaryTerminal", "pav": pav,
+                "cat": "Louças", "un": "un", "qtd": 1,
             })
 
     # ── Impermeabilização ──────────────────────────────────────────────────────
     if escopo.get("impermeab"):
         for slab in modelo.by_type("IfcSlab"):
-            pt = _predefined_type(slab)
-            if pt == "ROOF":
-                pav = _nome_pavimento(slab, modelo)
-                area = _area_liquida(slab)
+            if _predefined_type(slab) == "ROOF":
+                pav  = _nome_pavimento(slab, modelo)
+                area = _area_total(slab, settings)
                 if area > 0:
-                    area_c_margem = round(area * 1.10, 2)
                     rows.append({
-                        "cod":  SINAPI_MAP["impermeab_manta"],
+                        "cod": SINAPI_MAP["impermeab_manta"],
                         "item": "Impermeabilização — manta asfáltica",
-                        "ifc":  "IfcSlab",
-                        "pav":  pav,
-                        "cat":  "Impermeab.",
-                        "un":   "m2",
-                        "qtd":  area_c_margem,
+                        "ifc": "IfcSlab", "pav": pav,
+                        "cat": "Impermeab.", "un": "m2",
+                        "qtd": round(area * 1.10, 2),
                     })
 
-    # ── Consolidação: agrupa mesmos itens no mesmo pavimento ──────────────────
-    import pandas as pd
+    # ── Consolidação ──────────────────────────────────────────────────────────
     if not rows:
         return rows
 
     df = pd.DataFrame(rows)
     df_agg = (
-        df.groupby(["cod", "item", "ifc", "pav", "cat", "un"], as_index=False)
-        .agg(qtd=("qtd", "sum"))
+        df.groupby(["cod","item","ifc","pav","cat","un"], as_index=False)
+        .agg(qtd=("qtd","sum"))
     )
     df_agg["qtd"] = df_agg["qtd"].round(2)
     return df_agg.to_dict("records")
+
