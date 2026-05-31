@@ -143,26 +143,19 @@ input[type="checkbox"] {{ accent-color: {Z_BLUE_LIGHT} !important; }}
 """, unsafe_allow_html=True)
 
 # ── SVG logo Zigurat (ícone apenas, sem texto) ────────────────────────────────
-LOGO_SVG = """<svg width="38" height="32" viewBox="0 0 38 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M0 28L9 10L18 28H0Z" fill="#1B3A6B"/>
-  <path d="M10 28L19 10L28 28H10Z" fill="#2E5FA3"/>
-  <path d="M20 28L29 10L38 28H20Z" fill="#00A86B"/>
-</svg>"""
+# URL pública do logo oficial Zigurat
+LOGO_URL = "https://bimforum.org.br/wp-content/uploads/2024/05/ZIGURAT-Logo-1.png"
+LOGO_IMG = f'''<img src="{LOGO_URL}" height="36" style="display:block">'''
+# SVG fallback (ícone apenas, sem texto) para o header
+LOGO_SVG = LOGO_IMG
 
 # ── Sidebar — usando componentes nativos Streamlit ────────────────────────────
 with st.sidebar:
-    # Logo: SVG + texto lado a lado
-    col_logo, col_txt = st.columns([1, 2.5])
-    with col_logo:
-        st.markdown(LOGO_SVG, unsafe_allow_html=True)
-    with col_txt:
-        st.markdown(
-            f"<div style='font-size:15px;font-weight:800;color:{Z_GRAY};"
-            f"letter-spacing:.04em;margin-top:4px'>ZIGURAT</div>"
-            f"<div style='font-size:8px;color:{Z_GRAY2};letter-spacing:.1em;"
-            f"text-transform:uppercase'>Institute of Technology</div>",
-            unsafe_allow_html=True,
-        )
+    # Logo oficial Zigurat (imagem com texto incluso)
+    st.markdown(
+        f"<div style='padding:12px 16px 8px'>{LOGO_SVG}</div>",
+        unsafe_allow_html=True,
+    )
 
     st.markdown(f"<hr style='border:none;border-top:2px solid {Z_GREEN};margin:8px 0'>",
                 unsafe_allow_html=True)
@@ -243,10 +236,6 @@ st.markdown(f"""
     <div class="app-sub">Extração de quantitativos IFC · Preços SINAPI · M7T2 · Master IA para AEC</div>
   </div>
   <div class="zig-right">
-    <div class="zig-right-text" style="text-align:right">
-      <div class="zig-name">ZIGURAT</div>
-      <div class="zig-sub">Institute of Technology</div>
-    </div>
     {LOGO_SVG}
   </div>
 </div>
