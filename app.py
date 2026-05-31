@@ -466,18 +466,17 @@ if df is not None and not df.empty:
         )
 
 else:
-    st.markdown(f"""
-    <div style='background:#fff;border:1px solid {Z_BORDER};border-radius:12px;
-                padding:40px;text-align:center;color:{Z_GRAY2}'>
-        
-        <div style='font-size:20px;font-weight:700;color:{Z_BLUE_DARK};margin-bottom:10px'>
-            Como usar o QuantAI
-        </div>
-        <div style='font-size:14px;line-height:2;max-width:480px;margin:0 auto'>
-            1. Selecione o <b>estado</b> e o <b>regime de preços</b> na barra lateral<br>
-            2. Marque o <b>escopo</b> desejado (arquitetura)<br>
-            3. Faça upload do arquivo <b>.ifc</b><br>
-            4. Clique em <b>⚡ Processar IFC</b>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown(
+            "<div style='text-align:center;padding:20px 0 10px'>"
+            "<h3 style='color:#1B3A6B;margin-bottom:16px'>Como usar o QuantAI</h3>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.info("**1.** Selecione o **estado** e o **regime de preços** na barra lateral")
+        with c2:
+            st.info("**2.** Marque o **escopo** desejado e faça upload do arquivo **.ifc**")
+        with c3:
+            st.info("**3.** Clique em **⚡ Processar IFC** para extrair os quantitativos")
