@@ -1,5 +1,6 @@
 """
 QuantAI — Streamlit App
+Visual idêntico ao NBR 9050 Auditor (TFM Zigurat)
 M7T2 · Zigurat Institute of Technology · Prof. Thomas Takeuchi · Aluna: Renata Rocha
 """
 
@@ -16,74 +17,217 @@ from sinapi_client import buscar_precos_sinapi, info_referencia
 from excel_export import gerar_excel_bytes
 
 st.set_page_config(
-    page_title="QuantAI",
+    page_title="QuantAI — Zigurat",
     page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-AZUL_DARK = "#00427A"
-AZUL_MED  = "#185FA5"
-TEAL      = "#0F6E56"
-AMBER     = "#854F0B"
+# ── Paleta Zigurat (extraída do TFM) ──────────────────────────────────────────
+Z_BLUE      = "#1B3A6B"   # azul principal Zigurat
+Z_BLUE_MED  = "#2E5FA3"   # azul médio
+Z_GREEN     = "#00A86B"   # verde acento Zigurat
+Z_GREEN_LT  = "#E8F7F1"   # verde claro (fundos)
+Z_RED       = "#E63946"   # vermelho tab ativa
+Z_GRAY_BG   = "#F7F8FA"   # fundo geral
+Z_BORDER    = "#E0E4EC"   # borda padrão
+Z_TEXT      = "#1B2A3B"   # texto principal
+Z_TEXT2     = "#5A6B7B"   # texto secundário
 
 CORES_CAT = {
-    "Revestimentos": AZUL_MED,
-    "Forros":        TEAL,
-    "Esquadrias":    "#993C1D",
-    "Louças":        AMBER,
-    "Impermeab.":    "#534AB7",
+    "Revestimentos": Z_BLUE_MED,
+    "Forros":        Z_GREEN,
+    "Esquadrias":    "#C0392B",
+    "Louças":        "#8E44AD",
+    "Impermeab.":    "#E67E22",
 }
 
-st.markdown("""
+# ── CSS global — replica sidebar e tipografia do TFM ─────────────────────────
+st.markdown(f"""
 <style>
-[data-testid="stSidebar"] { background-color: #f8f7f4; }
-.sinapi-badge {
-    background:#E1F5EE;color:#085041;border-radius:20px;
-    padding:3px 10px;font-size:11px;font-weight:600;display:inline-block;
-}
-.ref-box {
-    background:#f1f0eb;border-radius:8px;padding:10px 14px;
-    font-size:12px;color:#5f5e5a;margin-top:4px;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+html, body, [class*="css"] {{
+    font-family: 'Inter', sans-serif;
+}}
+
+/* Sidebar — fundo branco com linha verde esquerda como no TFM */
+[data-testid="stSidebar"] {{
+    background-color: #FFFFFF;
+    border-right: 3px solid {Z_GREEN};
+}}
+[data-testid="stSidebar"] > div:first-child {{
+    padding-top: 0;
+}}
+
+/* Remove padding extra do sidebar */
+section[data-testid="stSidebar"] .block-container {{
+    padding-top: 1rem;
+}}
+
+/* Cabeçalho do conteúdo principal */
+.main .block-container {{
+    padding-top: 1.5rem;
+    background-color: {Z_GRAY_BG};
+}}
+
+/* Logo Zigurat no sidebar */
+.zig-logo {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid {Z_BORDER};
+    margin-bottom: 4px;
+}}
+.zig-logo-icon {{
+    width: 36px; height: 36px;
+    background: {Z_BLUE};
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+}}
+.zig-logo-text {{ line-height: 1.1; }}
+.zig-logo-name {{
+    font-size: 15px; font-weight: 700;
+    color: {Z_BLUE}; letter-spacing: .02em;
+}}
+.zig-logo-sub {{
+    font-size: 8px; color: {Z_TEXT2};
+    letter-spacing: .08em; text-transform: uppercase;
+}}
+
+/* Card de usuário */
+.user-card {{
+    background: {Z_GRAY_BG};
+    border: 1px solid {Z_BORDER};
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 8px 12px;
+}}
+.user-name  {{ font-size: 13px; font-weight: 600; color: {Z_TEXT}; }}
+.user-role  {{ font-size: 11px; color: {Z_TEXT2}; margin-top: 1px; }}
+.user-course{{ font-size: 10px; color: #9BAAB8; margin-top: 2px; }}
+
+/* Divisor verde (igual ao TFM) */
+.zig-divider {{
+    border: none; border-top: 2px solid {Z_GREEN};
+    margin: 10px 12px;
+}}
+
+/* Label de seção sidebar */
+.sb-section {{
+    font-size: 10px; font-weight: 700;
+    color: {Z_TEXT2}; letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 6px 16px 2px;
+}}
+
+/* Card de referência SINAPI */
+.sinapi-ref {{
+    background: {Z_GREEN_LT};
+    border: 1px solid {Z_GREEN};
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 0 12px 8px;
+    font-size: 11px;
+    color: #0A6B45;
+    line-height: 1.6;
+}}
+
+/* Header do app (box com logo Zigurat à direita — igual ao TFM) */
+.app-header {{
+    background: #FFFFFF;
+    border: 1px solid {Z_BORDER};
+    border-radius: 10px;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}}
+.app-header-left h1 {{
+    font-size: 26px; font-weight: 700;
+    color: {Z_BLUE}; margin: 0 0 4px;
+}}
+.app-header-left p {{
+    font-size: 12px; color: {Z_TEXT2};
+    letter-spacing: .05em; text-transform: uppercase; margin: 0;
+}}
+.app-header-right {{
+    text-align: right;
+}}
+.zig-header-logo {{
+    font-size: 20px; font-weight: 800;
+    color: {Z_BLUE}; letter-spacing: .05em;
+}}
+.zig-header-sub {{
+    font-size: 9px; color: {Z_TEXT2};
+    letter-spacing: .1em; text-transform: uppercase;
+}}
+
+/* Badge SINAPI */
+.sinapi-badge {{
+    background: {Z_GREEN_LT}; color: #0A6B45;
+    border: 1px solid {Z_GREEN};
+    border-radius: 20px; padding: 3px 12px;
+    font-size: 11px; font-weight: 600;
+    display: inline-block;
+}}
+
+/* Métricas customizadas */
+.metric-row {{ display: flex; gap: 12px; margin: 12px 0; }}
+.metric-box {{
+    background: #FFFFFF; border: 1px solid {Z_BORDER};
+    border-radius: 8px; padding: 14px 18px; flex: 1;
+    border-top: 3px solid {Z_BLUE};
+}}
+.metric-label {{
+    font-size: 11px; color: {Z_TEXT2};
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px;
+}}
+.metric-value {{
+    font-size: 24px; font-weight: 700; color: {Z_TEXT};
+}}
+.metric-unit {{
+    font-size: 11px; color: {Z_TEXT2}; margin-top: 2px;
+}}
 </style>
 """, unsafe_allow_html=True)
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
+    # Logo Zigurat (SVG inline replicando o ícone de folha/livro)
     st.markdown(f"""
-    <div style='display:flex;align-items:center;gap:10px;margin-bottom:8px'>
-        <div style='background:{AZUL_DARK};border-radius:8px;padding:6px 8px;
-                    color:white;font-size:18px;line-height:1'>🏛️</div>
-        <div>
-            <div style='font-size:18px;font-weight:700;color:{AZUL_DARK}'>QuantAI</div>
-            <div style='font-size:10px;color:#888;letter-spacing:.05em'>ZIGURAT INSTITUTE</div>
+    <div class="zig-logo">
+        <div class="zig-logo-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6C4 4.9 4.9 4 6 4H18C19.1 4 20 4.9 20 6V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V6Z" stroke="#00A86B" stroke-width="1.5"/>
+                <path d="M8 9H16M8 12H16M8 15H13" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <div class="zig-logo-text">
+            <div class="zig-logo-name">ZIGURAT</div>
+            <div class="zig-logo-sub">Institute of Technology</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style='background:#fff;border:0.5px solid #e0dfd8;border-radius:8px;
-                padding:10px 12px;margin:8px 0'>
-        <div style='font-size:13px;font-weight:600;color:#1a1a18'>Renata Rocha</div>
-        <div style='font-size:11px;color:#888'>Arquiteta · Coord. BIM</div>
-        <div style='font-size:10px;color:#aaa;margin-top:2px'>M7T2 · Prof. Thomas Takeuchi</div>
+    <div class="user-card">
+        <div class="user-name">Renata Rocha</div>
+        <div class="user-role">Arquiteta · Coord. BIM</div>
+        <div class="user-course">M7T2 · Prof. Thomas Takeuchi</div>
     </div>
+    <hr class="zig-divider"/>
     """, unsafe_allow_html=True)
-
-    st.divider()
-    st.markdown("### Configurações SINAPI")
 
     ref = info_referencia()
+    st.markdown('<div class="sb-section">Referência de Preços</div>', unsafe_allow_html=True)
     st.markdown(f"""
-    <div class='ref-box'>
-        📌 <b>Tabela embutida</b><br>
+    <div class="sinapi-ref">
+        📌 <strong>Tabela SINAPI embutida</strong><br>
         Fonte: {ref['fonte']}<br>
-        Referência: {ref['mes']}<br>
-        <span style='font-size:10px;color:#aaa'>{ref['nota']}</span>
+        Ref.: {ref['mes']}<br>
+        <span style="font-size:10px;color:#3A9E78">{ref['nota']}</span>
     </div>
     """, unsafe_allow_html=True)
-    st.write("")
 
     estado = st.selectbox(
         "Estado de referência",
@@ -100,8 +244,9 @@ with st.sidebar:
         horizontal=True,
     )
 
-    st.divider()
-    st.markdown("### Escopo — Arquitetura")
+    st.markdown('<hr class="zig-divider"/>', unsafe_allow_html=True)
+    st.markdown('<div class="sb-section">Escopo — Arquitetura</div>', unsafe_allow_html=True)
+
     escopo = {
         "revestimentos": st.checkbox("Revestimentos (piso / parede / teto)", value=True),
         "esquadrias":    st.checkbox("Esquadrias (portas e janelas)",          value=True),
@@ -111,18 +256,22 @@ with st.sidebar:
         "impermeab":     st.checkbox("Impermeabilização",                      value=False),
     }
 
-    st.divider()
+    st.markdown('<hr class="zig-divider"/>', unsafe_allow_html=True)
     st.caption(f"SINAPI: {ref['url']}\nIFC: ifcopenshell.org")
 
-# ── Cabeçalho ─────────────────────────────────────────────────────────────────
-st.markdown(
-    f"## <span style='color:{AZUL_DARK}'>QuantAI</span> — Quantificação Arquitetônica BIM",
-    unsafe_allow_html=True,
-)
-st.caption(
-    "Extração de quantitativos de arquivo IFC com preços SINAPI · "
-    "M7T2 · Zigurat Institute of Technology"
-)
+# ── Header principal (replica estilo do TFM) ──────────────────────────────────
+st.markdown(f"""
+<div class="app-header">
+    <div class="app-header-left">
+        <h1>🏛️ QuantAI — Quantificação Arquitetônica BIM</h1>
+        <p>Extração de quantitativos IFC · Preços SINAPI · M7T2 · Master IA para AEC</p>
+    </div>
+    <div class="app-header-right">
+        <div class="zig-header-logo">ZIGURAT</div>
+        <div class="zig-header-sub">Institute of Technology</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # ── Upload ────────────────────────────────────────────────────────────────────
 uploaded = st.file_uploader(
@@ -137,7 +286,7 @@ with col_up1:
     if uploaded:
         st.success(f"**{uploaded.name}** — {uploaded.size/1_048_576:.1f} MB carregado")
     else:
-        st.info("Arraste um arquivo .ifc para começar")
+        st.info("Arraste um arquivo .ifc para começar · Suporta IFC2X3 e IFC4")
 with col_up2:
     processar = st.button(
         "⚡ Processar IFC",
@@ -150,9 +299,9 @@ st.divider()
 
 # ── Sessão ────────────────────────────────────────────────────────────────────
 if "df" not in st.session_state:
-    st.session_state.df = None
+    st.session_state.df        = None
     st.session_state.ref_label = ""
-    st.session_state.aviso = ""
+    st.session_state.aviso     = ""
 
 # ── Processamento ─────────────────────────────────────────────────────────────
 if processar and uploaded:
@@ -202,32 +351,48 @@ if df is not None and not df.empty:
     total_area   = df.loc[df["un"]=="m2","qtd"].sum()
     n_pavimentos = df["pav"].nunique()
 
-    c1,c2,c3,c4 = st.columns(4)
-    with c1: st.metric("Itens extraídos", total_itens)
-    with c2: st.metric("Área total (m²)", f"{total_area:,.1f}".replace(",","."))
-    with c3: st.metric("Pavimentos", n_pavimentos)
-    with c4:
-        if total_custo:
-            vf = f"R$ {total_custo:,.2f}".replace(",","X").replace(".",",").replace("X",".")
-            st.metric("Custo estimado", vf)
-        else:
-            st.metric("Custo estimado", "— (sem área)")
+    def fmt_br(x, prefix=""):
+        if x is None or (isinstance(x, float) and pd.isna(x)):
+            return "—"
+        return f"{prefix}{x:,.2f}".replace(",","X").replace(".",",").replace("X",".")
+
+    custo_fmt = fmt_br(total_custo, "R$ ") if total_custo else "—"
+
+    st.markdown(f"""
+    <div class="metric-row">
+        <div class="metric-box">
+            <div class="metric-label">Itens extraídos</div>
+            <div class="metric-value">{total_itens}</div>
+            <div class="metric-unit">elementos</div>
+        </div>
+        <div class="metric-box">
+            <div class="metric-label">Área total</div>
+            <div class="metric-value">{fmt_br(total_area)}</div>
+            <div class="metric-unit">m²</div>
+        </div>
+        <div class="metric-box">
+            <div class="metric-label">Pavimentos</div>
+            <div class="metric-value">{n_pavimentos}</div>
+            <div class="metric-unit">andares lidos</div>
+        </div>
+        <div class="metric-box" style="border-top-color:{Z_GREEN}">
+            <div class="metric-label">Custo estimado</div>
+            <div class="metric-value" style="color:{Z_GREEN if total_custo else Z_TEXT2}">{custo_fmt}</div>
+            <div class="metric-unit">referência SINAPI</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown(f'<span class="sinapi-badge">📌 {ref_label}</span>', unsafe_allow_html=True)
     st.write("")
 
-    # Tabs
-    tab1,tab2,tab3,tab4 = st.tabs([
+    # Tabs — com estilo do TFM (linha vermelha embaixo da ativa)
+    tab1, tab2, tab3, tab4 = st.tabs([
         "📋 Quantitativos",
         "📊 Gráfico por categoria",
         "🗺️ Mapa de calor por pavimento",
         "📥 Exportar Excel",
     ])
-
-    def fmt_br(x, prefix=""):
-        if x is None or (isinstance(x,float) and pd.isna(x)):
-            return "—"
-        return f"{prefix}{x:,.2f}".replace(",","X").replace(".",",").replace("X",".")
 
     # Tab 1 — Tabela
     with tab1:
@@ -244,7 +409,7 @@ if df is not None and not df.empty:
         dv = df.copy()
         if cat_sel != "Todas":  dv = dv[dv["cat"]==cat_sel]
         if pav_sel != "Todos":  dv = dv[dv["pav"]==pav_sel]
-        if busca:               dv = dv[dv["item"].str.contains(busca,case=False,na=False)]
+        if busca:               dv = dv[dv["item"].str.contains(busca, case=False, na=False)]
 
         ds = dv[["cod","item","ifc","pav","cat","un","qtd","preco_unit","total"]].copy()
         ds.columns = ["Cód. SINAPI","Elemento","Entidade IFC","Pavimento",
@@ -253,16 +418,18 @@ if df is not None and not df.empty:
         ds["Preço unit. (R$)"] = ds["Preço unit. (R$)"].map(lambda x: fmt_br(x,"R$ "))
         ds["Total (R$)"]       = ds["Total (R$)"].map(lambda x: fmt_br(x,"R$ "))
         ds["Unidade"]          = ds["Unidade"].str.replace("m2","m²",regex=False)
+
         st.dataframe(ds, use_container_width=True, hide_index=True)
 
         tf = dv["total"].sum()
-        if tf: st.markdown(f"**Total filtrado: {fmt_br(tf,'R$ ')}**")
+        if tf:
+            st.markdown(f"**Total filtrado: {fmt_br(tf,'R$ ')}**")
 
     # Tab 2 — Gráfico
     with tab2:
         dc = (df.groupby("cat")
               .agg(total_custo=("total","sum"), total_itens=("item","count"))
-              .reset_index().sort_values("total_custo",ascending=True))
+              .reset_index().sort_values("total_custo", ascending=True))
         dc["cor"] = dc["cat"].map(lambda c: CORES_CAT.get(c,"#888780"))
 
         if dc["total_custo"].sum() > 0:
@@ -277,55 +444,63 @@ if df is not None and not df.empty:
                 title="Custo estimado por categoria (R$)",
                 xaxis_title="Total (R$)", yaxis_title=None,
                 plot_bgcolor="white", paper_bgcolor="white",
-                font=dict(family="Arial",size=12),
+                font=dict(family="Inter, sans-serif", size=12),
                 margin=dict(l=20,r=80,t=50,b=30),
                 height=max(250,60*len(dc)), showlegend=False,
             )
-            fig.update_xaxes(showgrid=True,gridcolor="#f0efe8",zeroline=False)
+            fig.update_xaxes(showgrid=True, gridcolor="#F0F0F0", zeroline=False)
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Área total = 0. Verifique se o modelo IFC tem parâmetros de quantidade preenchidos.")
+            st.info("Área total = 0 — verifique se o modelo IFC tem parâmetros de quantidade preenchidos.")
 
+        st.markdown("#### Distribuição de itens por categoria")
         fig2 = px.pie(dc, values="total_itens", names="cat",
-                      color="cat", color_discrete_map=CORES_CAT, hole=0.45)
+                      color="cat", color_discrete_map=CORES_CAT, hole=0.42)
         fig2.update_traces(textposition="outside", textinfo="label+percent")
         fig2.update_layout(showlegend=False, margin=dict(l=20,r=20,t=20,b=20),
-                           height=340, paper_bgcolor="white")
+                           height=340, paper_bgcolor="white",
+                           font=dict(family="Inter, sans-serif"))
         st.plotly_chart(fig2, use_container_width=True)
 
     # Tab 3 — Mapa de calor
     with tab3:
         st.markdown("#### Quantidade por pavimento e categoria")
-        pq = df.pivot_table(index="pav",columns="cat",values="qtd",aggfunc="sum",fill_value=0)
+        pq = df.pivot_table(index="pav", columns="cat", values="qtd",
+                            aggfunc="sum", fill_value=0)
         fh = go.Figure(go.Heatmap(
             z=pq.values, x=pq.columns.tolist(), y=pq.index.tolist(),
-            colorscale=[[0,"#E6F1FB"],[0.5,AZUL_MED],[1,AZUL_DARK]],
+            colorscale=[[0,"#E8F7F1"],[0.5,Z_GREEN],[1,Z_BLUE]],
             text=pq.values.round(1), texttemplate="%{text}",
             hovertemplate="Pav: %{y}<br>Cat: %{x}<br>Qtd: %{z:.1f}<extra></extra>",
             colorbar=dict(title="Qtd."),
         ))
-        fh.update_layout(xaxis_title="Categoria", yaxis_title="Pavimento",
-                         plot_bgcolor="white", paper_bgcolor="white",
-                         font=dict(family="Arial",size=12),
-                         margin=dict(l=20,r=20,t=30,b=30),
-                         height=max(280,70*len(pq)))
+        fh.update_layout(
+            xaxis_title="Categoria", yaxis_title="Pavimento",
+            plot_bgcolor="white", paper_bgcolor="white",
+            font=dict(family="Inter, sans-serif", size=12),
+            margin=dict(l=20,r=20,t=30,b=30),
+            height=max(280, 70*len(pq)),
+        )
         st.plotly_chart(fh, use_container_width=True)
 
         if df["total"].notna().any():
             st.markdown("#### Custo por pavimento e categoria (R$)")
-            pc = df.pivot_table(index="pav",columns="cat",values="total",aggfunc="sum",fill_value=0)
+            pc = df.pivot_table(index="pav", columns="cat", values="total",
+                                aggfunc="sum", fill_value=0)
             fh2 = go.Figure(go.Heatmap(
                 z=pc.values, x=pc.columns.tolist(), y=pc.index.tolist(),
-                colorscale=[[0,"#E1F5EE"],[0.5,TEAL],[1,"#04342C"]],
+                colorscale=[[0,"#E8F7F1"],[0.5,Z_GREEN],[1,Z_BLUE]],
                 text=pc.values, texttemplate="R$ %{text:,.0f}",
                 hovertemplate="Pav: %{y}<br>Cat: %{x}<br>R$ %{z:,.2f}<extra></extra>",
                 colorbar=dict(title="R$"),
             ))
-            fh2.update_layout(xaxis_title="Categoria", yaxis_title="Pavimento",
-                              plot_bgcolor="white", paper_bgcolor="white",
-                              font=dict(family="Arial",size=12),
-                              margin=dict(l=20,r=20,t=30,b=30),
-                              height=max(280,70*len(pc)))
+            fh2.update_layout(
+                xaxis_title="Categoria", yaxis_title="Pavimento",
+                plot_bgcolor="white", paper_bgcolor="white",
+                font=dict(family="Inter, sans-serif", size=12),
+                margin=dict(l=20,r=20,t=30,b=30),
+                height=max(280, 70*len(pc)),
+            )
             st.plotly_chart(fh2, use_container_width=True)
 
     # Tab 4 — Exportar
@@ -349,14 +524,17 @@ if df is not None and not df.empty:
         )
 
 else:
+    # Estado inicial
     st.markdown(f"""
-    <div style='background:#f8f7f4;border:1px solid #e0dfd8;border-radius:12px;
-                padding:32px;text-align:center;color:#888'>
-        <div style='font-size:40px;margin-bottom:12px'>🏛️</div>
-        <div style='font-size:18px;font-weight:600;color:{AZUL_DARK};margin-bottom:8px'>
+    <div style='background:#FFFFFF;border:1px solid {Z_BORDER};border-radius:12px;
+                padding:40px;text-align:center;color:{Z_TEXT2}'>
+        <div style='font-size:42px;margin-bottom:14px'>🏛️</div>
+        <div style='font-size:20px;font-weight:700;color:{Z_BLUE};margin-bottom:10px;
+                    font-family:Inter,sans-serif'>
             Como usar o QuantAI
         </div>
-        <div style='font-size:14px;line-height:1.8;max-width:500px;margin:0 auto'>
+        <div style='font-size:14px;line-height:2;max-width:480px;margin:0 auto;
+                    font-family:Inter,sans-serif'>
             1. Selecione o <b>estado</b> e o <b>regime de preços</b> na barra lateral<br>
             2. Marque o <b>escopo</b> desejado (arquitetura)<br>
             3. Faça upload do arquivo <b>.ifc</b><br>
