@@ -153,7 +153,7 @@ LOGO_SVG = LOGO_IMG
 with st.sidebar:
     # Logo oficial Zigurat (imagem com texto incluso)
     st.markdown(
-        f"<div style='padding:14px 16px 10px'>{LOGO_SVG.replace('height=\"36\"', 'height=\"52\"')}</div>",
+        "<div style='padding:14px 16px 10px'>" + LOGO_SVG.replace('height="36"', 'height="52"') + "</div>",
         unsafe_allow_html=True,
     )
 
