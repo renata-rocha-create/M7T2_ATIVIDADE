@@ -153,7 +153,7 @@ LOGO_SVG = LOGO_IMG
 with st.sidebar:
     # Logo oficial Zigurat (imagem com texto incluso)
     st.markdown(
-        f"<div style='padding:12px 16px 8px'>{LOGO_SVG}</div>",
+        f"<div style='padding:14px 16px 10px'>{LOGO_SVG.replace('height=\"36\"', 'height=\"52\"')}</div>",
         unsafe_allow_html=True,
     )
 
@@ -232,12 +232,10 @@ with st.sidebar:
 st.markdown(f"""
 <div class="app-header">
   <div>
-    <div class="app-title">🏛️ QuantAI — Quantificação Arquitetônica BIM</div>
+    <div class="app-title">QuantAI — Quantificação Arquitetônica BIM</div>
     <div class="app-sub">Extração de quantitativos IFC · Preços SINAPI · M7T2 · Master IA para AEC</div>
   </div>
-  <div class="zig-right">
-    {LOGO_SVG}
-  </div>
+
 </div>
 """, unsafe_allow_html=True)
 
@@ -471,7 +469,7 @@ else:
     st.markdown(f"""
     <div style='background:#fff;border:1px solid {Z_BORDER};border-radius:12px;
                 padding:40px;text-align:center;color:{Z_GRAY2}'>
-        <div style='font-size:42px;margin-bottom:14px'>🏛️</div>
+        
         <div style='font-size:20px;font-weight:700;color:{Z_BLUE_DARK};margin-bottom:10px'>
             Como usar o QuantAI
         </div>
