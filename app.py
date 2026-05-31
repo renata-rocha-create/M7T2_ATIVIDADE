@@ -145,7 +145,7 @@ input[type="checkbox"] {{ accent-color: {Z_BLUE_LIGHT} !important; }}
 # ── SVG logo Zigurat (ícone apenas, sem texto) ────────────────────────────────
 # URL pública do logo oficial Zigurat
 LOGO_URL = "https://bimforum.org.br/wp-content/uploads/2024/05/ZIGURAT-Logo-1.png"
-LOGO_IMG = f'''<img src="{LOGO_URL}" height="36" style="display:block">'''
+LOGO_IMG = f'<img src="{LOGO_URL}" height="108" style="display:block">'
 # SVG fallback (ícone apenas, sem texto) para o header
 LOGO_SVG = LOGO_IMG
 
@@ -153,7 +153,7 @@ LOGO_SVG = LOGO_IMG
 with st.sidebar:
     # Logo oficial Zigurat (imagem com texto incluso)
     st.markdown(
-        "<div style='padding:14px 16px 10px'>" + LOGO_SVG.replace('height="36"', 'height="52"') + "</div>",
+        "<div style='padding:14px 16px 10px'>" + LOGO_SVG + "</div>",
         unsafe_allow_html=True,
     )
 
