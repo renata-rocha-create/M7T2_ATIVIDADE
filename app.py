@@ -1,7 +1,6 @@
 """
 QuantAI — Streamlit App
-Visual Zigurat Institute of Technology (logo oficial)
-M7T2 · Prof. Thomas Takeuchi · Aluna: Renata Rocha
+M7T2 · Zigurat Institute of Technology · Prof. Thomas Takeuchi · Aluna: Renata Rocha
 """
 
 import tempfile
@@ -23,15 +22,15 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Paleta Zigurat oficial ────────────────────────────────────────────────────
-Z_BLUE_DARK  = "#1B3A6B"   # azul escuro logo
-Z_BLUE_MED   = "#2E5FA3"   # azul médio logo
-Z_BLUE_LIGHT = "#4A90D9"   # azul claro logo (botões, destaques)
-Z_BLUE_BG    = "#EBF3FB"   # azul clarissimo (fundo botões/badges)
-Z_GREEN      = "#00A86B"   # verde Zigurat
+# ── Paleta Zigurat ────────────────────────────────────────────────────────────
+Z_BLUE_DARK  = "#1B3A6B"
+Z_BLUE_MED   = "#2E5FA3"
+Z_BLUE_LIGHT = "#4A90D9"
+Z_BLUE_BG    = "#EBF3FB"
+Z_GREEN      = "#00A86B"
 Z_GREEN_LT   = "#E8F7F1"
-Z_GRAY_TEXT  = "#3D4451"   # cinza texto logo Zigurat
-Z_GRAY_SUB   = "#6B7280"
+Z_GRAY       = "#3D4451"
+Z_GRAY2      = "#6B7280"
 Z_BORDER     = "#E0E4EC"
 Z_BG         = "#F7F8FA"
 
@@ -43,213 +42,160 @@ CORES_CAT = {
     "Impermeab.":    "#3A7BD5",
 }
 
-# ── Logo Zigurat em SVG — replica o ícone oficial ─────────────────────────────
-ZIGURAT_LOGO_SVG = """
-<svg width="44" height="36" viewBox="0 0 44 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Forma esquerda (azul escuro) -->
-  <path d="M0 26L10 10L20 26H0Z" fill="#1B3A6B"/>
-  <!-- Forma direita (azul médio) -->
-  <path d="M12 26L22 10L32 26H12Z" fill="#2E5FA3" opacity="0.85"/>
-  <!-- Forma topo (verde) -->
-  <path d="M20 8L28 20H12L20 8Z" fill="#00A86B"/>
-</svg>
-"""
-
+# ── CSS — apenas estilos, sem HTML estrutural no sidebar ──────────────────────
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
 
-html, body, [class*="css"] {{
-    font-family: 'Inter', sans-serif;
-    color: {Z_GRAY_TEXT};
-}}
-
-/* Sidebar — fundo branco, linha verde esquerda */
+/* Sidebar */
 [data-testid="stSidebar"] {{
     background-color: #FFFFFF !important;
     border-right: 3px solid {Z_GREEN} !important;
 }}
 
-/* Botão primário — azul claro Zigurat (não vermelho) */
-.stButton > button[kind="primary"],
-button[data-testid="baseButton-primary"] {{
+/* Botão primário — azul */
+.stButton > button[kind="primary"] {{
     background-color: {Z_BLUE_LIGHT} !important;
     border-color: {Z_BLUE_LIGHT} !important;
     color: white !important;
     font-weight: 600 !important;
-    border-radius: 8px !important;
 }}
-.stButton > button[kind="primary"]:hover,
-button[data-testid="baseButton-primary"]:hover {{
+.stButton > button[kind="primary"]:hover {{
     background-color: {Z_BLUE_MED} !important;
     border-color: {Z_BLUE_MED} !important;
 }}
 
-/* Download button — azul claro */
+/* Download button — azul */
 .stDownloadButton > button {{
     background-color: {Z_BLUE_LIGHT} !important;
     border-color: {Z_BLUE_LIGHT} !important;
     color: white !important;
     font-weight: 600 !important;
-    border-radius: 8px !important;
 }}
 .stDownloadButton > button:hover {{
     background-color: {Z_BLUE_MED} !important;
 }}
 
-/* Checkbox — azul claro */
-[data-testid="stCheckbox"] svg {{ color: {Z_BLUE_LIGHT} !important; }}
+/* Radio e checkbox — azul */
+input[type="radio"] {{ accent-color: {Z_BLUE_LIGHT} !important; }}
+input[type="checkbox"] {{ accent-color: {Z_BLUE_LIGHT} !important; }}
 
-/* Radio — azul claro */
-[data-testid="stRadio"] label {{ accent-color: {Z_BLUE_LIGHT}; }}
-
-/* Tabs — linha inferior azul (não vermelha) */
+/* Tab ativa — azul */
 .stTabs [data-baseweb="tab-highlight"] {{
     background-color: {Z_BLUE_LIGHT} !important;
 }}
-.stTabs [data-baseweb="tab"][aria-selected="true"] {{
+.stTabs [aria-selected="true"] {{
     color: {Z_BLUE_LIGHT} !important;
     font-weight: 600 !important;
 }}
 
-/* Progress / spinner */
-.stSpinner > div {{ border-top-color: {Z_BLUE_LIGHT} !important; }}
-
-/* Header app */
-.app-header {{
-    background: #FFFFFF;
-    border: 1px solid {Z_BORDER};
-    border-radius: 10px;
-    padding: 20px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}}
-.app-title {{
-    font-size: 24px; font-weight: 700;
-    color: {Z_BLUE_DARK}; margin: 0 0 4px;
-}}
-.app-sub {{
-    font-size: 11px; color: {Z_GRAY_SUB};
-    letter-spacing: .06em; text-transform: uppercase;
-}}
-.zig-header-right {{
-    display: flex; align-items: center; gap: 10px;
-}}
-.zig-header-name {{
-    text-align: right;
-}}
-.zig-header-name .name {{
-    font-size: 18px; font-weight: 800;
-    color: {Z_GRAY_TEXT}; letter-spacing: .04em;
-}}
-.zig-header-name .sub {{
-    font-size: 9px; color: {Z_GRAY_SUB};
-    letter-spacing: .12em; text-transform: uppercase;
-}}
-
-/* Logo sidebar */
-.zig-logo {{
-    display: flex; align-items: center; gap: 10px;
-    padding: 16px 16px 12px;
-    border-bottom: 1px solid {Z_BORDER};
-    margin-bottom: 4px;
-}}
-.zig-logo-name {{
-    font-size: 16px; font-weight: 800;
-    color: {Z_GRAY_TEXT}; letter-spacing: .04em; line-height: 1.1;
-}}
-.zig-logo-sub {{
-    font-size: 8px; color: {Z_GRAY_SUB};
-    letter-spacing: .1em; text-transform: uppercase;
-}}
-
-/* Usuário */
-.user-card {{
-    background: {Z_BG};
-    border: 1px solid {Z_BORDER};
-    border-radius: 8px;
-    padding: 10px 14px; margin: 8px 12px;
-}}
-.user-name  {{ font-size: 13px; font-weight: 600; color: {Z_GRAY_TEXT}; }}
-.user-role  {{ font-size: 11px; color: {Z_GRAY_SUB}; margin-top:1px; }}
-.user-course{{ font-size: 10px; color: #9BAAB8; margin-top:2px; }}
-
-/* Divider verde */
-.zig-divider {{
-    border: none; border-top: 2px solid {Z_GREEN};
-    margin: 10px 12px;
-}}
-
-/* Label seção */
-.sb-section {{
-    font-size: 10px; font-weight: 700;
-    color: {Z_GRAY_SUB}; letter-spacing: .1em;
-    text-transform: uppercase; padding: 6px 16px 2px;
-}}
-
-/* Card SINAPI ref */
-.sinapi-ref {{
-    background: {Z_GREEN_LT};
-    border: 1px solid {Z_GREEN};
-    border-radius: 8px; padding: 10px 14px;
-    margin: 0 12px 8px;
-    font-size: 11px; color: #0A6B45; line-height: 1.6;
-}}
-
 /* Métricas */
-.metric-row {{ display: flex; gap: 12px; margin: 12px 0; }}
+.metric-row {{ display:flex; gap:12px; margin:12px 0; }}
 .metric-box {{
-    background: #FFFFFF; border: 1px solid {Z_BORDER};
-    border-radius: 8px; padding: 14px 18px; flex: 1;
-    border-top: 3px solid {Z_BLUE_LIGHT};
+    background:#fff; border:1px solid {Z_BORDER};
+    border-radius:8px; padding:14px 18px; flex:1;
+    border-top:3px solid {Z_BLUE_LIGHT};
 }}
-.metric-box.green {{ border-top-color: {Z_GREEN}; }}
+.metric-box.green {{ border-top-color:{Z_GREEN}; }}
 .metric-label {{
-    font-size: 10px; font-weight: 700; color: {Z_GRAY_SUB};
-    text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px;
+    font-size:10px; font-weight:700; color:{Z_GRAY2};
+    text-transform:uppercase; letter-spacing:.07em; margin-bottom:6px;
 }}
-.metric-value {{ font-size: 22px; font-weight: 700; color: {Z_GRAY_TEXT}; }}
-.metric-value.green {{ color: {Z_GREEN}; }}
-.metric-unit {{ font-size: 11px; color: {Z_GRAY_SUB}; margin-top: 2px; }}
+.metric-value {{ font-size:22px; font-weight:700; color:{Z_GRAY}; }}
+.metric-value.green {{ color:{Z_GREEN}; }}
+.metric-unit {{ font-size:11px; color:{Z_GRAY2}; margin-top:2px; }}
 
 /* Badge SINAPI */
 .sinapi-badge {{
-    background: {Z_BLUE_BG}; color: {Z_BLUE_MED};
-    border: 1px solid {Z_BLUE_MED};
-    border-radius: 20px; padding: 3px 12px;
-    font-size: 11px; font-weight: 600; display: inline-block;
+    background:{Z_BLUE_BG}; color:{Z_BLUE_MED};
+    border:1px solid {Z_BLUE_MED};
+    border-radius:20px; padding:3px 12px;
+    font-size:11px; font-weight:600; display:inline-block;
+}}
+
+/* Header card */
+.app-header {{
+    background:#fff; border:1px solid {Z_BORDER};
+    border-radius:10px; padding:20px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:20px;
+}}
+.app-title {{
+    font-size:22px; font-weight:700; color:{Z_BLUE_DARK}; margin:0 0 4px;
+}}
+.app-sub {{
+    font-size:11px; color:{Z_GRAY2};
+    letter-spacing:.05em; text-transform:uppercase;
+}}
+.zig-right {{
+    display:flex; align-items:center; gap:10px;
+}}
+.zig-right-text .zig-name {{
+    font-size:17px; font-weight:800; color:{Z_GRAY};
+    letter-spacing:.05em; line-height:1;
+}}
+.zig-right-text .zig-sub {{
+    font-size:8px; color:{Z_GRAY2};
+    letter-spacing:.12em; text-transform:uppercase;
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+# ── SVG logo Zigurat (ícone apenas, sem texto) ────────────────────────────────
+LOGO_SVG = """<svg width="38" height="32" viewBox="0 0 38 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M0 28L9 10L18 28H0Z" fill="#1B3A6B"/>
+  <path d="M10 28L19 10L28 28H10Z" fill="#2E5FA3"/>
+  <path d="M20 28L29 10L38 28H20Z" fill="#00A86B"/>
+</svg>"""
+
+# ── Sidebar — usando componentes nativos Streamlit ────────────────────────────
 with st.sidebar:
+    # Logo: SVG + texto lado a lado
+    col_logo, col_txt = st.columns([1, 2.5])
+    with col_logo:
+        st.markdown(LOGO_SVG, unsafe_allow_html=True)
+    with col_txt:
+        st.markdown(
+            f"<div style='font-size:15px;font-weight:800;color:{Z_GRAY};"
+            f"letter-spacing:.04em;margin-top:4px'>ZIGURAT</div>"
+            f"<div style='font-size:8px;color:{Z_GRAY2};letter-spacing:.1em;"
+            f"text-transform:uppercase'>Institute of Technology</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(f"<hr style='border:none;border-top:2px solid {Z_GREEN};margin:8px 0'>",
+                unsafe_allow_html=True)
+
+    # Usuário
     st.markdown(f"""
-    <div class="zig-logo">
-        {ZIGURAT_LOGO_SVG}
-        <div>
-            <div class="zig-logo-name">ZIGURAT</div>
-            <div class="zig-logo-sub">Institute of Technology</div>
-        </div>
+    <div style='background:{Z_BG};border:1px solid {Z_BORDER};border-radius:8px;
+                padding:10px 14px;margin-bottom:8px'>
+        <div style='font-size:13px;font-weight:600;color:{Z_GRAY}'>Renata Rocha</div>
+        <div style='font-size:11px;color:{Z_GRAY2};margin-top:2px'>Arquiteta · Coord. BIM</div>
+        <div style='font-size:10px;color:#9BAAB8;margin-top:2px'>M7T2 · Prof. Thomas Takeuchi</div>
     </div>
-    <div class="user-card">
-        <div class="user-name">Renata Rocha</div>
-        <div class="user-role">Arquiteta · Coord. BIM</div>
-        <div class="user-course">M7T2 · Prof. Thomas Takeuchi</div>
-    </div>
-    <hr class="zig-divider"/>
     """, unsafe_allow_html=True)
 
+    st.markdown(f"<hr style='border:none;border-top:2px solid {Z_GREEN};margin:8px 0'>",
+                unsafe_allow_html=True)
+
+    # SINAPI ref
     ref = info_referencia()
-    st.markdown('<div class="sb-section">Referência de Preços</div>', unsafe_allow_html=True)
+    st.markdown(
+        f"<div style='font-size:10px;font-weight:700;color:{Z_GRAY2};"
+        f"letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px'>"
+        f"Referência de Preços</div>",
+        unsafe_allow_html=True,
+    )
     st.markdown(f"""
-    <div class="sinapi-ref">
+    <div style='background:{Z_GREEN_LT};border:1px solid {Z_GREEN};
+                border-radius:8px;padding:10px 14px;margin-bottom:12px;
+                font-size:11px;color:#0A6B45;line-height:1.7'>
         📌 <strong>Tabela SINAPI embutida</strong><br>
         Fonte: {ref['fonte']}<br>
         Ref.: {ref['mes']}<br>
-        <span style="font-size:10px;color:#3A9E78">{ref['nota']}</span>
+        <span style='font-size:10px;color:#3A9E78'>{ref['nota']}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -267,8 +213,15 @@ with st.sidebar:
         horizontal=True,
     )
 
-    st.markdown('<hr class="zig-divider"/>', unsafe_allow_html=True)
-    st.markdown('<div class="sb-section">Escopo — Arquitetura</div>', unsafe_allow_html=True)
+    st.markdown(f"<hr style='border:none;border-top:2px solid {Z_GREEN};margin:8px 0'>",
+                unsafe_allow_html=True)
+    st.markdown(
+        f"<div style='font-size:10px;font-weight:700;color:{Z_GRAY2};"
+        f"letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px'>"
+        f"Escopo — Arquitetura</div>",
+        unsafe_allow_html=True,
+    )
+
     escopo = {
         "revestimentos": st.checkbox("Revestimentos (piso / parede / teto)", value=True),
         "esquadrias":    st.checkbox("Esquadrias (portas e janelas)",          value=True),
@@ -277,23 +230,25 @@ with st.sidebar:
         "forros":        st.checkbox("Forros / tetos",                         value=False),
         "impermeab":     st.checkbox("Impermeabilização",                      value=False),
     }
-    st.markdown('<hr class="zig-divider"/>', unsafe_allow_html=True)
+
+    st.markdown(f"<hr style='border:none;border-top:2px solid {Z_GREEN};margin:8px 0'>",
+                unsafe_allow_html=True)
     st.caption(f"SINAPI: {ref['url']}\nIFC: ifcopenshell.org")
 
-# ── Header ────────────────────────────────────────────────────────────────────
+# ── Header principal ──────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="app-header">
-    <div>
-        <div class="app-title">🏛️ QuantAI — Quantificação Arquitetônica BIM</div>
-        <div class="app-sub">Extração de quantitativos IFC · Preços SINAPI · M7T2 · Master IA para AEC</div>
+  <div>
+    <div class="app-title">🏛️ QuantAI — Quantificação Arquitetônica BIM</div>
+    <div class="app-sub">Extração de quantitativos IFC · Preços SINAPI · M7T2 · Master IA para AEC</div>
+  </div>
+  <div class="zig-right">
+    <div class="zig-right-text" style="text-align:right">
+      <div class="zig-name">ZIGURAT</div>
+      <div class="zig-sub">Institute of Technology</div>
     </div>
-    <div class="zig-header-right">
-        <div class="zig-header-name">
-            <div class="name">ZIGURAT</div>
-            <div class="sub">Institute of Technology</div>
-        </div>
-        {ZIGURAT_LOGO_SVG}
-    </div>
+    {LOGO_SVG}
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -304,13 +259,13 @@ uploaded = st.file_uploader(
     help="Exportado do Revit, ArchiCAD ou Vectorworks. Suporta IFC 2x3 e IFC 4.",
     label_visibility="collapsed",
 )
-col_up1, col_up2 = st.columns([3, 1])
-with col_up1:
+c1, c2 = st.columns([3, 1])
+with c1:
     if uploaded:
         st.success(f"**{uploaded.name}** — {uploaded.size/1_048_576:.1f} MB carregado")
     else:
         st.info("Arraste um arquivo .ifc para começar · Suporta IFC2X3 e IFC4")
-with col_up2:
+with c2:
     processar = st.button("⚡ Processar IFC", disabled=uploaded is None,
                           type="primary", use_container_width=True)
 st.divider()
@@ -342,13 +297,14 @@ if processar and uploaded:
     for r in rows:
         r["preco_unit"] = precos.get(str(r["cod"]))
         r["total"] = (r["qtd"] * r["preco_unit"]) if r["preco_unit"] else None
-    regime_label = "Desonerado" if regime == "desonerado" else "Não desonerado"
+    rl = "Desonerado" if regime == "desonerado" else "Não desonerado"
     st.session_state.df        = pd.DataFrame(rows)
-    st.session_state.ref_label = f"SINAPI {ref['mes']} · {estado} · {regime_label}"
+    st.session_state.ref_label = f"SINAPI {ref['mes']} · {estado} · {rl}"
     st.session_state.aviso     = aviso
 
 # ── Resultados ─────────────────────────────────────────────────────────────────
 df: pd.DataFrame = st.session_state.df
+
 if df is not None and not df.empty:
     ref_label = st.session_state.ref_label
     if st.session_state.aviso:
@@ -364,31 +320,31 @@ if df is not None and not df.empty:
             return "—"
         return f"{prefix}{x:,.2f}".replace(",","X").replace(".",",").replace("X",".")
 
-    custo_fmt = fmt_br(total_custo, "R$ ") if total_custo else "—"
+    custo_fmt   = fmt_br(total_custo, "R$ ") if total_custo else "—"
     custo_class = "green" if total_custo else ""
 
     st.markdown(f"""
     <div class="metric-row">
-        <div class="metric-box">
-            <div class="metric-label">Itens extraídos</div>
-            <div class="metric-value">{total_itens}</div>
-            <div class="metric-unit">elementos</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Área total</div>
-            <div class="metric-value">{fmt_br(total_area)}</div>
-            <div class="metric-unit">m²</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">Pavimentos</div>
-            <div class="metric-value">{n_pavimentos}</div>
-            <div class="metric-unit">andares lidos</div>
-        </div>
-        <div class="metric-box {custo_class}">
-            <div class="metric-label">Custo estimado</div>
-            <div class="metric-value {custo_class}">{custo_fmt}</div>
-            <div class="metric-unit">referência SINAPI</div>
-        </div>
+      <div class="metric-box">
+        <div class="metric-label">Itens extraídos</div>
+        <div class="metric-value">{total_itens}</div>
+        <div class="metric-unit">elementos</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Área total</div>
+        <div class="metric-value">{fmt_br(total_area)}</div>
+        <div class="metric-unit">m²</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Pavimentos</div>
+        <div class="metric-value">{n_pavimentos}</div>
+        <div class="metric-unit">andares lidos</div>
+      </div>
+      <div class="metric-box {custo_class}">
+        <div class="metric-label">Custo estimado</div>
+        <div class="metric-value {custo_class}">{custo_fmt}</div>
+        <div class="metric-unit">referência SINAPI</div>
+      </div>
     </div>
     <span class="sinapi-badge">📌 {ref_label}</span>
     """, unsafe_allow_html=True)
@@ -402,7 +358,7 @@ if df is not None and not df.empty:
     ])
 
     with tab1:
-        cf1,cf2,cf3 = st.columns([2,2,2])
+        cf1, cf2, cf3 = st.columns([2, 2, 2])
         with cf1:
             cats    = ["Todas"] + sorted(df["cat"].unique().tolist())
             cat_sel = st.selectbox("Categoria", cats)
@@ -411,26 +367,31 @@ if df is not None and not df.empty:
             pav_sel = st.selectbox("Pavimento", pavs)
         with cf3:
             busca = st.text_input("Buscar item", placeholder="ex: cerâmico")
+
         dv = df.copy()
         if cat_sel != "Todas": dv = dv[dv["cat"]==cat_sel]
         if pav_sel != "Todos": dv = dv[dv["pav"]==pav_sel]
         if busca:              dv = dv[dv["item"].str.contains(busca, case=False, na=False)]
+
         ds = dv[["cod","item","ifc","pav","cat","un","qtd","preco_unit","total"]].copy()
         ds.columns = ["Cód. SINAPI","Elemento","Entidade IFC","Pavimento",
                       "Categoria","Unidade","Quantidade","Preço unit. (R$)","Total (R$)"]
         ds["Quantidade"]       = ds["Quantidade"].map(fmt_br)
-        ds["Preço unit. (R$)"] = ds["Preço unit. (R$)"].map(lambda x: fmt_br(x,"R$ "))
-        ds["Total (R$)"]       = ds["Total (R$)"].map(lambda x: fmt_br(x,"R$ "))
-        ds["Unidade"]          = ds["Unidade"].str.replace("m2","m²",regex=False)
+        ds["Preço unit. (R$)"] = ds["Preço unit. (R$)"].map(lambda x: fmt_br(x, "R$ "))
+        ds["Total (R$)"]       = ds["Total (R$)"].map(lambda x: fmt_br(x, "R$ "))
+        ds["Unidade"]          = ds["Unidade"].str.replace("m2", "m²", regex=False)
         st.dataframe(ds, use_container_width=True, hide_index=True)
+
         tf = dv["total"].sum()
-        if tf: st.markdown(f"**Total filtrado: {fmt_br(tf,'R$ ')}**")
+        if tf:
+            st.markdown(f"**Total filtrado: {fmt_br(tf, 'R$ ')}**")
 
     with tab2:
         dc = (df.groupby("cat")
               .agg(total_custo=("total","sum"), total_itens=("item","count"))
               .reset_index().sort_values("total_custo", ascending=True))
-        dc["cor"] = dc["cat"].map(lambda c: CORES_CAT.get(c,"#888780"))
+        dc["cor"] = dc["cat"].map(lambda c: CORES_CAT.get(c, "#888780"))
+
         if dc["total_custo"].sum() > 0:
             fig = go.Figure(go.Bar(
                 y=dc["cat"], x=dc["total_custo"], orientation="h",
@@ -450,7 +411,8 @@ if df is not None and not df.empty:
             fig.update_xaxes(showgrid=True, gridcolor="#F0F0F0", zeroline=False)
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Área total = 0 — verifique se o modelo IFC tem parâmetros de quantidade preenchidos.")
+            st.info("Área total = 0 — verifique os parâmetros de quantidade no modelo IFC.")
+
         fig2 = px.pie(dc, values="total_itens", names="cat",
                       color="cat", color_discrete_map=CORES_CAT, hole=0.42)
         fig2.update_traces(textposition="outside", textinfo="label+percent")
@@ -474,9 +436,10 @@ if df is not None and not df.empty:
             xaxis_title="Categoria", yaxis_title="Pavimento",
             plot_bgcolor="white", paper_bgcolor="white",
             font=dict(family="Inter, sans-serif", size=12),
-            margin=dict(l=20,r=20,t=30,b=30), height=max(280, 70*len(pq)),
+            margin=dict(l=20,r=20,t=30,b=30), height=max(280,70*len(pq)),
         )
         st.plotly_chart(fh, use_container_width=True)
+
         if df["total"].notna().any():
             st.markdown("#### Custo por pavimento e categoria (R$)")
             pc = df.pivot_table(index="pav", columns="cat", values="total",
@@ -492,7 +455,7 @@ if df is not None and not df.empty:
                 xaxis_title="Categoria", yaxis_title="Pavimento",
                 plot_bgcolor="white", paper_bgcolor="white",
                 font=dict(family="Inter, sans-serif", size=12),
-                margin=dict(l=20,r=20,t=30,b=30), height=max(280, 70*len(pc)),
+                margin=dict(l=20,r=20,t=30,b=30), height=max(280,70*len(pc)),
             )
             st.plotly_chart(fh2, use_container_width=True)
 
@@ -517,8 +480,8 @@ if df is not None and not df.empty:
 
 else:
     st.markdown(f"""
-    <div style='background:#FFFFFF;border:1px solid {Z_BORDER};border-radius:12px;
-                padding:40px;text-align:center;color:{Z_GRAY_SUB}'>
+    <div style='background:#fff;border:1px solid {Z_BORDER};border-radius:12px;
+                padding:40px;text-align:center;color:{Z_GRAY2}'>
         <div style='font-size:42px;margin-bottom:14px'>🏛️</div>
         <div style='font-size:20px;font-weight:700;color:{Z_BLUE_DARK};margin-bottom:10px'>
             Como usar o QuantAI
